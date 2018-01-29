@@ -1,9 +1,9 @@
 /*
  * Source Modified by Pierrick Rauby <PierrickRauby - pierrick.rauby@gmail.com>
+ * Attempt to duplicate Greg Raven pruadc1 SPI code for MCP3008
  * Based on the examples distributed by TI
  * Copyright (C) 2015 Texas Instruments Incorporated - http://www.ti.com/
- *
- *
+
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
