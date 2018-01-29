@@ -9,6 +9,8 @@
 *.o
 *.ko
 *.obj
+*.object
+*.pp
 *.elf
 
 # Linker output
