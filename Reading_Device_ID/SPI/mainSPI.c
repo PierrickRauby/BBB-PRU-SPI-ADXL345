@@ -79,7 +79,7 @@ uint8_t spiRead(uint8_t Register){ // returns the values from a given register
 	Register |= (1<<7); //adding the R bit as the MSB of the adress
 
 	//initialization
- __R30 |= (1<<5); //CS -> HIGH
+ __R30 |= (1<<5); //CS -> HIGH ###vérifier si cette ligne et les deux suivantes sont nécessaires
  __R30 |= (1<<2); //Clock -> HIGH
  __delay_cycles(TWAIT);
  __R30 &= 0xFFFFFFDF; //CS -> LOW
@@ -89,10 +89,10 @@ uint8_t spiRead(uint8_t Register){ // returns the values from a given register
 	//for loop that transfert bit R, MB, Adress and D7 to D1 (D0 received after)
 	for (i=0; i<15; i++){
 		if (Register & (1<<7)){
-			__R30 |= (1<<1); // set MOSI -> HIGH
+			__R30 |= (1<<1); // MOSI -> HIGH
 		}
 		else{
-		__R30 &= 0xFFFFFFFD; //set MOSI -> LOW
+		__R30 &= 0xFFFFFFFD; // MOSI -> LOW
 		}
 
 		__delay_cycles(TSETUP);
@@ -103,7 +103,7 @@ uint8_t spiRead(uint8_t Register){ // returns the values from a given register
 		__delay_cycles(THOLD);
 		__R30 &= 0xFFFFFFFB; //Clock -> LOW
 		__R30 &= 0xFFFFFFFD; //MOSI -> LOW
-		//__delay_cycles(TSCLK-TSETUP-THOLD-8);
+		__delay_cycles(TSCLK-TSETUP-THOLD-8);
 	Register <<=1; //shifting the adress of 1 bit
 	data <<=1; //shifting data of 1 bit
 	} //end of the for loop D0 still needs to be transmited
@@ -149,7 +149,7 @@ void main(void)
 					//variables initialization
 					uint8_t data = 0x00; // Incoming data stored here.
 					//uint8_t *pointerData= &data;
-					spiCommand = 0x00;
+					spiCommand = 0x30;
 					__R30 = 0x00000000;//  Clear the output pin.
 					data=spiRead(spiCommand);
 				 	payload[0]= (uint8_t)data;
