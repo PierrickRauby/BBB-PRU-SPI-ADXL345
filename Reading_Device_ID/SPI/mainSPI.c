@@ -46,7 +46,15 @@
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
 uint8_t spiCommand;
-#define PULSEWIDTH 300
+#define PULSEWIDTH 300 //old delay
+
+#define TWAIT 100000000 // long delay for stabilization
+#define TDELAY 2 // delay for tdelay=2*5ns > 5ns=tdelay_min
+#define TSETUP 2 // delay for tsetup=2*5ns > 5ns=tsetup_min
+#define THOLD 2 // delay for thold=2*5ns > 5ns=thold_min
+#define TSCLK 45 // delay for tsclk=45*5ns > 200ns=tsclk_min
+#define TQUIET 2 // delay for tquiet=2*5ns > 5ns=tquiet_min
+#define TCSDIS 35 // delay for tcsdis=35*5ns > 150ns=tcsdis_min
 
 /* Host-0 Interrupt sets bit 30 in register R31 */
 #define HOST_INT			((uint32_t) 1 << 30)
@@ -65,12 +73,60 @@ uint8_t spiCommand;
 
 uint8_t payload[RPMSG_BUF_SIZE];
 
+uint8_t spiRead(uint8_t Register){ // returns the values from a given register
+	int i;
+	uint8_t data=0x00;
+	Register |= (1<<7); //adding the R bit as the MSB of the adress
+
+	//initialization
+ __R30 |= (1<<5); //CS -> HIGH
+ __R30 |= (1<<2); //Clock -> HIGH
+ __delay_cycles(TWAIT);
+ __R30 &= 0xFFFFFFDF; //CS -> LOW
+ __delay_cycles(TDELAY);
+ __R30 &= 0xFFFFFFFB; //Clock -> HIGH
+
+	//for loop that transfert bit R, MB, Adress and D7 to D1 (D0 received after)
+	for (i=0; i<15; i++){
+		if (Register & (1<<7)){
+			__R30 |= (1<<1); // set MOSI -> HIGH
+		}
+		else{
+		__R30 &= 0xFFFFFFFD; //set MOSI -> LOW
+		}
+
+		__delay_cycles(TSETUP);
+		__R30 |= (1<<2); //Clock -> HIGH
+		if(__R31 & (1<<3)){
+			data |= 1; //1 in data's LSB
+		}
+		__delay_cycles(THOLD);
+		__R30 &= 0xFFFFFFFB; //Clock -> LOW
+		__R30 &= 0xFFFFFFFD; //MOSI -> LOW
+		//__delay_cycles(TSCLK-TSETUP-THOLD-8);
+	Register <<=1; //shifting the adress of 1 bit
+	data <<=1; //shifting data of 1 bit
+	} //end of the for loop D0 still needs to be transmited
+	__delay_cycles(TSETUP);
+	__R30 |= (1<<2); //Clock -> HIGH
+	if (__R31 & (1<<3)){
+		data|= 1; //reading bit D0
+		//data=0xAA;
+	}
+	__delay_cycles(TQUIET);
+	__R30 |= (1<<5); //CS -> HIGH
+	__delay_cycles(TCSDIS);
+	__R30 &= 0xFFFFFFFD; //CS -> LOW
+
+	return data;
+}
+
 void main(void)
 {
 	struct pru_rpmsg_transport transport;
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
-  int i;
+  //int i;
 	/* Allow OCP master port access by the PRU so the PRU can read external memories */
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 	/* Clear the status of the PRU-ICSS system event that the ARM will use to 'kick' us */
@@ -91,54 +147,11 @@ void main(void)
 		/* Receive all available messages, multiple messages can be sent per kick */
 		while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
 					//variables initialization
-					uint16_t data = 0x00; // Incoming data stored here.
-					spiCommand = 0x30;
-					// int RW= 1; // RW=1 for reading
-					// if (RW){
-					// spiCommand= spiCommand | (1<<7);
-					// }
+					uint8_t data = 0x00; // Incoming data stored here.
+					//uint8_t *pointerData= &data;
+					spiCommand = 0x00;
 					__R30 = 0x00000000;//  Clear the output pin.
-					//start R/W bit
-					__R30 = __R30 | (1 << 5); //chip select HIGH. __R30 = 0x00100000;
-					__delay_cycles(100000000); // Delay
-					__R30 = __R30 & 0xFFFFFFDF; //  CS-> LOW P9.27 r30_5
-					__R30 = __R30 & 0xFFFFFFFB; //  Clock -> LOW P9.30 r30_2
-					__R30 = __R30 | (1 << 1);   //  MOSI -> HIGH P9.29 r30_1
-					__delay_cycles(PULSEWIDTH); //  Delay
-					__R30 = __R30 | (1<<2); //  Clock -> HIGH P9.30 r30_2
-					__delay_cycles(PULSEWIDTH); //  Delay
-					__R30 = __R30 & 0xFFFFFFFB; //  Clock -> LOW P9.30 r30_2
-					__R30 = __R30 & (0xFFFFFFFD);  //  MOSI -> LOW P9.29 r30_1
-					//loop for 15 last bits
-					for (i = 0; i < 15; i ++) {
-								//shifting
-								//data<<=1;
-								//spiCommand <<=1;
-								// Writting on MOSI
-						    if (spiCommand & (1<<7)){  //  If the spiCommand MSB 1
-						       __R30 = __R30 | (1 << 1); //  MOSI -> HIGH P9.29 r30_1
-						    }
-						    else{
-						       __R30 = __R30 & (0xFFFFFFFD);  //  MOSI -> LOW P9.29 r30_1
-						    }
-								//Clock toggling
-						    __delay_cycles(PULSEWIDTH); //  Delay
-						    __R30 = __R30 | (1<<2); //  Clock -> HIGH P9.30 r30_2
-								// Reading on MISO
-								if (__R31 & (1 << 3)){ //MISO read P9.28 r31_3
-									 data |= 1;} // 1-> data's LBS
-								__delay_cycles(PULSEWIDTH); //  Delay
-						    __R30 = __R30 & 0xFFFFFFFB; //  Clock -> LOW P9.30 r30_2
-								//shifting
-								data<<=1;
-								spiCommand <<=1;
- 							 }
-					__delay_cycles(PULSEWIDTH); //  Delay
-					__R30 = __R30 | (1<<2); //  Clock -> HIGH P9.30 r30_2
-					if (__R31 & (1 << 3)){ //MISO read P9.28 r31_3
-					 data |= 1;} // 1-> data's LBS
-					__delay_cycles(PULSEWIDTH); //  Delay
-				 	__R30 = __R30 | 1 << 5; //  Chip select to HIGH
+					data=spiRead(spiCommand);
 				 	payload[0]= (uint8_t)data;
 				 	pru_rpmsg_send(&transport, dst, src, payload, 2);
 				}
