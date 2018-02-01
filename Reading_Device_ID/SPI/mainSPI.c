@@ -112,7 +112,7 @@ uint8_t spiRead(uint8_t Register){ // returns the values from a given register
 	__delay_cycles(TQUIET);
 	__R30 |= (1<<5); //CS -> HIGH
 	__delay_cycles(TCSDIS);
-	__R30 &= 0xFFFFFFFD; //CS -> LOW
+	__R30 &= 0xFFFFFFDF; //CS -> LOW
 
 	return data;
 }
@@ -120,7 +120,6 @@ uint8_t spiRead(uint8_t Register){ // returns the values from a given register
 void spiWrite(uint8_t Register, uint8_t Value){
 	int i;
 	uint16_t Transfer=((((uint16_t)(Register & 0x7F))<<8)+Value);
-	uint16_t save= Transfer;
 	//initialization
 	__R30 |= (1<<5); //CS -> HIGH //Maybe these lines can be deleted ?
 	__R30 |= (1<<2); //Clock -> HIGH
@@ -154,7 +153,7 @@ void spiWrite(uint8_t Register, uint8_t Value){
 	__delay_cycles(TQUIET);
 	__R30 |= (1<<5); //CS -> HIGH
 	__delay_cycles(TCSDIS);
-	__R30 &= 0xFFFFFFFD; //CS -> LOW
+	__R30 &= 0xFFFFFFDF; //CS -> LOW
 	//return save;
 }
 
@@ -186,8 +185,8 @@ void main(void)
 					uint8_t data = 0x00; // Incoming data stored here.
 					spiCommand = 0x2D;
 					__R30 = 0x00000000;//  Clear the output pin.
-					spiWrite(spiCommand,0x2B);
-					data=spiRead(0x32);
+					spiWrite(0x2D,0x2B);
+					data=spiRead(0x00);
 				 	payload[0]= (uint16_t)data;
 				 	pru_rpmsg_send(&transport, dst, src, payload, 2);
 				}
