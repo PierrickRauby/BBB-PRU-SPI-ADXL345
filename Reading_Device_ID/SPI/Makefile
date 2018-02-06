@@ -29,7 +29,7 @@ MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 CURRENT_DIR := $(notdir $(patsubst %/,%,$(dir $(MKFILE_PATH))))
 PROJ_NAME=$(CURRENT_DIR)
 LINKER_COMMAND_FILE=./AM335x_PRU.cmd
-LIBS=--library=../lib/rpmsg_lib.lib
+LIBS=--library=../lib/rpmsg_lib.lib -library=../lib/libSPI.lib
 INCLUDE=--include_path=../include --include_path=../include/am335x --include_path=../include/pru_spi
 STACK_SIZE=0x100
 HEAP_SIZE=0x100
