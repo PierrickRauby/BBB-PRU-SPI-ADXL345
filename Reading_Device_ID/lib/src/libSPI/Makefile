@@ -34,7 +34,8 @@ GEN_DIR=gen
 #Common compiler flags (Defined in 'PRU Optimizing C/C++ Compiler User's Guide)
 CFLAGS=-v3 -O2 --display_error_number --endian=little --hardware_mac=on --obj_directory=$(GEN_DIR) --pp_directory=$(GEN_DIR) -ppd -ppa
 
-TARGET=$(GEN_DIR)/$(PROJ_NAME).lib
+TARGET= $(patsubst $(CURRENT_DIR)%,../../$(PROJ_NAME).lib%,$(CURRENT_DIR))
+#TARGET=$(GEN_DIR)/$(PROJ_NAME).lib
 SOURCES=$(wildcard *.c)
 #Using .object instead of .obj in order to not conflict with the CCS build process
 OBJECTS=$(patsubst %,$(GEN_DIR)/%,$(SOURCES:.c=.object))
@@ -57,7 +58,7 @@ $(TARGET): $(OBJECTS)
 	@echo ''
 	@echo 'Building target: $@'
 	@echo 'Invoking: PRU Archiver'
-	$(PRU_CGT)/bin/arpru r $(TARGET) $(OBJECTS)
+	arpru r $(TARGET) $(OBJECTS)
 	@echo 'Finished building target: $@'
 	@echo ''
 	@echo 'Output files can be found in the "$(GEN_DIR)" directory'
